@@ -10,6 +10,7 @@ extern crate chrono;
 #[macro_use]
 extern crate serde_derive;
 
+use std::env;
 use std::fs::File;
 use std::path::Path;
 use std::io::prelude::*;
@@ -63,11 +64,23 @@ fn estimate_target_reached_date(last_day: &Workout, total_pushups: u32, total_da
     DateTime::parse_from_rfc2822(last_day.get_date()).unwrap() + Duration::days(days_ahead_until_target as i64)
 }
 
+fn parse_repeats_from_args() -> Option<u32> {
+    let args: Vec<String> = env::args().collect();
+    let repeats: Option<u32> = args
+        .get(1)
+        .and_then(|repeats| repeats.parse().ok());
+    repeats
+}
+
 fn main() {
     // 0 read cmd line args, create a workout object out of it
-    // TODO - for now its mock
     let now = Utc::now();
-    let mock = Workout::new(now.to_rfc2822(), 45);
+    let repeats = parse_repeats_from_args();
+    if repeats.is_none() {
+        println!("You need to pass number of your workout's repeats as first argument!");
+        return;
+    }
+    let new_workout = Workout::new(now.to_rfc2822(), repeats.unwrap());
 
     // 1 read file contents to string - it might be empty
     let path = Path::new(FILE_PATH);
@@ -78,7 +91,7 @@ fn main() {
         .expect("invalid workouts JSON!");
 
     // 2 push the workout object into array, sort it
-    workouts.push(mock);
+    workouts.push(new_workout);
     workouts.sort();
 
     // 3 get days difference (last - first), get total pushups - calculate the "speed" of pushups
